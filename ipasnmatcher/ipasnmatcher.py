@@ -16,7 +16,7 @@ def is_prefix_active(timelines):
     return False  # all ended
 
 class ASN:
-    def __init__(self,asn: str,strict: bool, cache_max_age: int = 3600):
+    def __init__(self,asn: str,strict: bool = False, cache_max_age: int = 3600):
         self.asn = asn
         self._strict = strict
         self._cache_max_age = cache_max_age
