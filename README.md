@@ -12,8 +12,10 @@ A Python package for that allows you to verify if an IP address belongs to a spe
 ## Installation
 
 ```bash
-```
 git clone https://github.com/itsmmdoha/ipasnmatcher
+cd ipasnmatcher
+```
+
 ## Usage
 
 ```python
