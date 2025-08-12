@@ -24,13 +24,13 @@ class ASN:
 
     Parameters
     ----------
-    `asn : str`
+    asn : str
         ASN identifier (e.g., "AS15169").
 
-    `strict : bool`  optional
+    strict : bool, optional
         If True, only prefixes that are currently active will be included.
 
-    `cache_max_age : int` optional
+    cache_max_age : int, optional
         Maximum cache lifetime in seconds (default is 3600).
     """
     def __init__(self,asn: str,strict: bool = False, cache_max_age: int = 3600):
@@ -47,7 +47,7 @@ class ASN:
         api_url = f"https://stat.ripe.net/data/announced-prefixes/data.json?resource={self.asn}&sourceapp={self._SOURCE_APP}"
         res = get(api_url)
         res.raise_for_status()
-        data = json.loads(res.text)
+        data = res.json()
         prefix_list = data["data"]["prefixes"]
         return prefix_list
 
@@ -100,7 +100,7 @@ class ASN:
 
         Parameters
         ----------
-        `ip : str`
+        ip : str
             IPv4 or IPv6 address to check.
 
         Returns
