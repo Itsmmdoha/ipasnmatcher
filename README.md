@@ -1,13 +1,13 @@
 # ipasnmatcher
 
-A Python package that allows you to verify if an IP address belongs to a specific ASN's network ranges.
+A Python package to verify if an IP address belongs to a specific ASN's network ranges using RIPEstat data.
 
 ## Features
 
-- 🚀 Fast IP-to-ASN matching using optimized network ranges
-- 💾 Built-in caching to minimize API calls
-- 🎯 Strict mode for active prefixes only
-- 🌐 Uses RIPE NCC data for accurate results
+* Fast IP-to-ASN matching with optimized network ranges
+* Built-in caching to minimize API requests
+* Optional strict mode to consider only active prefixes
+* Uses accurate data from RIPE NCC
 
 ## Installation
 
@@ -15,58 +15,58 @@ A Python package that allows you to verify if an IP address belongs to a specifi
 pip install ipasnmatcher
 ```
 
-
 ## Usage
 
 ```python
 from ipasnmatcher import ASN
 
-# Create an ASN object
+# Creating an ASN object fetches prefix data from the RIPEstat API and caches it locally
 asn = ASN(asn="AS151981")
 
 # Check if an IP belongs to this ASN
 print(asn.match("153.53.148.45"))  # True or False
 ```
 
-### Advanced Usage
+## Advanced Usage
 
 ```python
-from ipasnmatcher import ASN
-
-# Configure with options
 asn = ASN(
-    asn="AS15169",           # Google's ASN
-    strict=True,             # Only active prefixes
-    cache_max_age=7200       # Cache for 2 hours
+    asn="AS15169",      # ASN (e.g., Google)
+    strict=True,        # Only consider active prefixes
+    cache_max_age=7200  # Cache duration in seconds (2 hours)
 )
 
-# Test multiple IPs
-test_ips = ["8.8.8.8", "1.1.1.1", "172.217.14.142"]
-
-for ip in test_ips:
+ips = ["8.8.8.8", "1.1.1.1", "172.217.14.142"]
+for ip in ips:
     if asn.match(ip):
-        print(f" {ip} belongs to AS15169")
+        print(f"{ip} belongs to {asn.asn}")
     else:
-        print(f" {ip} does not belong to AS15169")
+        print(f"{ip} does not belong to {asn.asn}")
 ```
-
-## Use Cases
-
-- **Network Security**: Verify if traffic originates from expected ASNs
-- **CDN Optimization**: Route traffic based on ASN ownership
-- **IP Intelligence**: Classify IPs by their network operators
-- **Compliance Monitoring**: Ensure connections come from approved networks
 
 ## Parameters
 
 ```python
-ASN(asn, strict=False, cache_max_age=3600)
+ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 ```
 
-- **`asn`**: ASN number (format: "AS12345")
-- **`strict`**: Only consider currently active prefixes (default: False)
-- **`cache_max_age`**: Cache duration in seconds (default: 3600)
+* `asn`: ASN identifier in format `"AS12345"`
+* `strict`: If `True`, only prefixes currently active are considered (default: `False`)
+* `cache_max_age`: Cache lifetime in seconds (default: `3600`)
+
+## How it works
+
+* On initialization, the `ASN` object fetches announced prefixes from the RIPEstat API and caches them locally in `.ipasnmatcher_cache/{asn}.json`.
+* Subsequent uses load data from cache if it is fresh (not older than `cache_max_age`).
+* Matching IPs against ASN prefixes is done efficiently using Python's `ipaddress` module.
+
+## Use Cases
+
+* Network security and traffic validation
+* CDN traffic routing based on ASN ownership
+* IP classification by network operators
+* Compliance monitoring of network connections
 
 ## License
 
-MIT License
+This project is licensed under the MIT License. See the `LICENSE` file for details.
