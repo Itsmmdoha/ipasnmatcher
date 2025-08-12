@@ -1,6 +1,6 @@
 # ipasnmatcher
 
-A Python package for that allows you to verify if an IP address belongs to a specific ASN's network ranges.
+A Python package that allows you to verify if an IP address belongs to a specific ASN's network ranges.
 
 ## Features
 
