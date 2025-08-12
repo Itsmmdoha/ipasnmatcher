@@ -1,5 +1,5 @@
 from requests import get
-from ipaddress import ip_address, ip_network, collapse_addresses
+from ipaddress import ip_address, ip_network
 import json
 from time import time
 from datetime import datetime, timezone
@@ -65,7 +65,7 @@ class ASN:
             if self._strict and not is_prefix_active(timelines):
                 continue
             network_objects.append(ip_network(prefix["prefix"], strict=False))
-        self._network_objects = collapse_addresses(network_objects) 
+        self._network_objects = network_objects 
 
     def match_asn(self, ip: str) -> bool:
         address = ip_address(ip)
