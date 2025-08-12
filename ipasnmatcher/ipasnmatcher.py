@@ -67,7 +67,7 @@ class ASN:
             network_objects.append(ip_network(prefix["prefix"], strict=False))
         self._network_objects = network_objects 
 
-    def match_asn(self, ip: str) -> bool:
+    def match(self, ip: str) -> bool:
         address = ip_address(ip)
         flag = any(address in net for net in self._network_objects)
         return flag

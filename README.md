@@ -25,7 +25,7 @@ from ipasnmatcher import ASN
 asn = ASN(asn="AS151981")
 
 # Check if an IP belongs to this ASN
-print(asn.match_asn("153.53.148.45"))  # True or False
+print(asn.match("153.53.148.45"))  # True or False
 ```
 
 ### Advanced Usage
@@ -44,7 +44,7 @@ asn = ASN(
 test_ips = ["8.8.8.8", "1.1.1.1", "172.217.14.142"]
 
 for ip in test_ips:
-    if asn.match_asn(ip):
+    if asn.match(ip):
         print(f" {ip} belongs to AS15169")
     else:
         print(f" {ip} does not belong to AS15169")

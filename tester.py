@@ -1,5 +1,5 @@
 from ipasnmatcher import ASN
 
-asn = ASN(asn="AS151981")
+asn = ASN(asn="AS15169")
 
-print(asn.match_asn("153.53.148.45"))
+print(asn.match("8.8.8.8"))
