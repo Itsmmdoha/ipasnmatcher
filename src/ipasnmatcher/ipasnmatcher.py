@@ -1,20 +1,11 @@
-from requests import get
-from ipaddress import ip_address, ip_network
+from requests import get, Timeout, RequestException
+from ipaddress import AddressValueError, ip_address, ip_network
 import json
 from time import time
-from datetime import datetime, timezone
 from os import makedirs
+from .exceptions import InvalidIPError, NetworkError
+from .utils import _validate_asn, is_prefix_active
 
-def is_prefix_active(timelines):
-    """Check if at least one prefix timeline is currently active."""
-    now = datetime.now(timezone.utc)
-    for t in timelines:
-        end_time = datetime.fromisoformat(t["endtime"])
-        if end_time.tzinfo is None:
-            end_time = end_time.replace(tzinfo=timezone.utc)
-        if end_time > now:
-            return True  # at least one active period
-    return False  # all ended
 
 class ASN:
     """
@@ -32,9 +23,16 @@ class ASN:
 
     cache_max_age : int, optional
         Maximum cache lifetime in seconds (default is 3600).
+
+    Raises
+    ------
+    InvalidASNError
+        If the provided ASN is invalid.
+    NetworkError
+        If data fetching for ASN fail or timeout.
     """
     def __init__(self,asn: str,strict: bool = False, cache_max_age: int = 3600):
-        self.asn = asn
+        self.asn = _validate_asn(asn) 
         self._strict = strict
         self._cache_max_age = cache_max_age
         self._SOURCE_APP: str = "Ipasnmatcher"
@@ -42,11 +40,18 @@ class ASN:
         makedirs(".ipasnmatcher_cache", exist_ok=True)
         self._load()
 
+
     def _fetch_from_api(self):
         """Fetch prefix data for the ASN from RIPEstat API."""
         api_url = f"https://stat.ripe.net/data/announced-prefixes/data.json?resource={self.asn}&sourceapp={self._SOURCE_APP}"
-        res = get(api_url)
-        res.raise_for_status()
+        try:
+            res = get(api_url)
+        except Timeout:
+            raise NetworkError(f"Request timed out while fetching data for ASN {self.asn}")
+        except RequestException as e:
+            raise NetworkError(f"Failed to fetch data for ASN {self.asn}: {str(e)}")
+        except (KeyError, json.JSONDecodeError) as e:
+            raise NetworkError(f"Invalid data received for ASN {self.asn}")
         data = res.json()
         prefix_list = data["data"]["prefixes"]
         return prefix_list
@@ -107,7 +112,15 @@ class ASN:
         -------
         bool
             True if the IP belongs to one of the ASN's prefixes, False otherwise.
+
+        Raises
+        ------
+        InvalidIPError
+            If the provided IP address format is invalid.
         """
-        address = ip_address(ip)
+        try:
+            address = ip_address(ip)
+        except AddressValueError:
+            raise InvalidIPError(f"Invalid IP address: {ip}")
         flag = any(address in net for net in self._network_objects)
         return flag

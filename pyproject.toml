@@ -1,6 +1,6 @@
 [project]
 name = "ipasnmatcher"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
   { name="Monazir Muhammad Doha", email="mmdoha@houndsec.net" },
 ]
@@ -24,3 +24,6 @@ Issues = "https://github.com/itsmmdoha/ipasnmatcher/issues"
 [build-system]
 requires = ["uv_build >= 0.7.19, <0.9.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+exclude = ["requirements.txt"]
