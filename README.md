@@ -51,7 +51,7 @@ ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 ```
 
 * `asn`: ASN identifier in format `"AS12345"`
-* `strict`: If `True`, only prefixes currently active are considered (default: `False`)
+* `strict`: If `True`, only prefixes currenhttps://github.com/Itsmmdoha/ipasnmatcher/blob/main/LICENSEtly active are considered (default: `False`)
 * `cache_max_age`: Cache lifetime in seconds (default: `3600`)
 
 ## How it works
@@ -67,6 +67,10 @@ ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 * IP classification by network operators
 * Compliance monitoring of network connections
 
+## GitHub
+
+Find the github repository [here](https://github.com/Itsmmdoha/ipasnmatcher)
+
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
