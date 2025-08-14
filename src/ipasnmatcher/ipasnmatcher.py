@@ -39,7 +39,14 @@ class ASN:
         self._network_objects = []
         makedirs(".ipasnmatcher_cache", exist_ok=True)
         self._load()
+        self.asn_repr = f"ASN(asn={self.asn!r}, strict={self._strict!r}, cache_max_age={self._cache_max_age!r} )"
 
+    def __add__(self, other):
+        self._network_objects.extend(other._network_objects)
+        self.asn_repr = f"{self.asn_repr} + {other.asn_repr}"
+        return self
+    def __repr__(self) -> str:
+        return self.asn_repr
 
     def _fetch_from_api(self):
         """Fetch prefix data for the ASN from RIPEstat API."""

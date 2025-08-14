@@ -36,12 +36,27 @@ asn = ASN(
     cache_max_age=7200  # Cache duration in seconds (2 hours)
 )
 
-ips = ["8.8.8.8", "1.1.1.1", "172.217.14.142"]
-for ip in ips:
-    if asn.match(ip):
-        print(f"{ip} belongs to {asn.asn}")
-    else:
-        print(f"{ip} does not belong to {asn.asn}")
+```
+
+### Combine ASN objects
+
+Merge multiple ASNs with `+` to check IPs against all their prefixes:
+
+```python
+from ipasnmatcher import ASN
+
+google = ASN("AS15169")      # Google
+cloudflare = ASN("AS13335")  # Cloudflare
+
+combined = google + cloudflare
+print(combined.match("8.8.8.8"))   # True (Google)
+print(combined.match("1.1.1.1"))   # True (Cloudflare)
+```
+
+`repr()` shows the full combination:
+
+```
+ASN(asn='AS15169', strict=False, cache_max_age=3600) + ASN(asn='AS13335', strict=False, cache_max_age=3600)
 ```
 
 ## Parameters
@@ -51,7 +66,7 @@ ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 ```
 
 * `asn`: ASN identifier in format `"AS12345"`
-* `strict`: If `True`, only prefixes currenhttps://github.com/Itsmmdoha/ipasnmatcher/blob/main/LICENSEtly active are considered (default: `False`)
+* `strict`: If `True`, only prefixes currently active are considered (default: `False`)
 * `cache_max_age`: Cache lifetime in seconds (default: `3600`)
 
 ## How it works
@@ -69,8 +84,8 @@ ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 
 ## GitHub
 
-Find the github repository [here](https://github.com/Itsmmdoha/ipasnmatcher)
+Star or fork this project on [GitHub](https://github.com/Itsmmdoha/ipasnmatcher).
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/Itsmmdoha/ipasnmatcher/blob/main/LICENSE) file for details.
