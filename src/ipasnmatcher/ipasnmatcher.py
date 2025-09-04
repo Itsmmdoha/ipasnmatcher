@@ -127,7 +127,7 @@ class ASN:
         """
         try:
             address = ip_address(ip)
-        except AddressValueError:
+        except (AddressValueError, ValueError):
             raise InvalidIPError(f"Invalid IP address: {ip}")
         flag = any(address in net for net in self._network_objects)
         return flag
