@@ -1,15 +1,15 @@
 # ipasnmatcher
 
-<img width="6749" height="4036" alt="ipasnmatcher-min" src="https://github.com/user-attachments/assets/22ae405f-e4ec-4a51-ad53-c040a02e4cc9" />
-
-Verify if an IP address belongs to an ASN’s network ranges with research-grade data from RIPEstat.
+A Python package to verify if an IP address belongs to a specific ASN's network ranges using RIPEstat data.
 
 ## Features
 
-* Fast IP-to-ASN matching with optimized network ranges
+* Lazy loads prefix data on first match for faster initialization
+* Fast IP-to-ASN matching with optimized network range checks
 * Built-in caching to minimize API requests
 * Optional strict mode to consider only active prefixes
 * Uses accurate data from RIPE NCC
+* Supports both synchronous and asynchronous usage
 
 ## Installation
 
@@ -19,14 +19,33 @@ pip install ipasnmatcher
 
 ## Usage
 
+### Synchronous Example
+
 ```python
 from ipasnmatcher import ASN
 
-# Creating an ASN object fetches prefix data from the RIPEstat API and caches it locally
-asn = ASN(asn="AS151981")
+# Create an ASN object (prefix data will be lazy-loaded on first match)
+asn = ASN("AS151981")
 
-# Check if an IP belongs to this ASN
+# The first match triggers data loading from RIPEstat API (and caches it)
 print(asn.match("153.53.148.45"))  # True or False
+```
+
+### Asynchronous Example
+
+```python
+import asyncio
+from ipasnmatcher import AsyncASN
+
+async def main():
+    # Create an async ASN object (lazy-loads on first async_match)
+    async_asn = AsyncASN("AS15169")
+
+    # The first async_match call triggers async data loading
+    result = await async_asn.async_match("8.8.8.8")
+    print(result)  # True or False
+
+asyncio.run(main())
 ```
 
 ## Advanced Usage
@@ -37,20 +56,25 @@ asn = ASN(
     strict=True,        # Only consider active prefixes
     cache_max_age=7200  # Cache duration in seconds (2 hours)
 )
-
 ```
 
-### Combine ASN objects
+### Combining ASN Objects
 
-Merge multiple ASNs with `+` to check IPs against all their prefixes:
+You can combine multiple ASNs using the `+` operator.
+When combined:
+
+* If **any** of the ASNs has `strict=True`, the resulting combined ASN will also be **strict**.
+* The combined ASN’s `max_cache_age` will be the **minimum** of the values from the ASNs being merged.
 
 ```python
 from ipasnmatcher import ASN
 
-google = ASN("AS15169")      # Google
-cloudflare = ASN("AS13335")  # Cloudflare
+google = ASN("AS15169", strict=False, cache_max_age=7200)
+cloudflare = ASN("AS13335", strict=True, cache_max_age=3600)
 
 combined = google + cloudflare
+
+# Combined inherits strict=True and cache_max_age=3600
 print(combined.match("8.8.8.8"))   # True (Google)
 print(combined.match("1.1.1.1"))   # True (Cloudflare)
 ```
@@ -58,7 +82,7 @@ print(combined.match("1.1.1.1"))   # True (Cloudflare)
 `repr()` shows the full combination:
 
 ```
-ASN(asn='AS15169', strict=False, cache_max_age=3600) + ASN(asn='AS13335', strict=False, cache_max_age=3600)
+ASN(asn='AS15169', strict=False, cache_max_age=7200) + ASN(asn='AS13335', strict=True, cache_max_age=3600)
 ```
 
 ## Parameters
@@ -73,9 +97,10 @@ ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 
 ## How it works
 
-* On initialization, the `ASN` object fetches announced prefixes from the RIPEstat API and caches them locally in `.ipasnmatcher_cache/{asn}.json`.
-* Subsequent uses load data from cache if it is fresh (not older than `cache_max_age`).
-* Matching IPs against ASN prefixes is done efficiently using Python's `ipaddress` module.
+* Data is **lazy-loaded** — the first `match()` or `async_match()` triggers prefix loading from the RIPEstat API.
+* Prefix data is cached locally in `.ipasnmatcher_cache/{asn}.json`.
+* Subsequent matches use cached data if it’s fresh (not older than `cache_max_age`).
+* Matching is done efficiently using Python’s `ipaddress` module.
 
 ## Use Cases
 
