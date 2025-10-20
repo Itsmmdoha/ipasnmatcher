@@ -38,12 +38,11 @@ import asyncio
 from ipasnmatcher import AsyncASN
 
 async def main():
-    # Create an async ASN object (lazy-loads on first async_match)
-    async_asn = AsyncASN("AS15169")
-
-    # The first async_match call triggers async data loading
-    result = await async_asn.async_match("8.8.8.8")
-    print(result)  # True or False
+    # Context-managed async usage
+    async with AsyncASN("AS15169") as asn:
+        # The first async_match triggers async lazy loading
+        result = await asn.async_match("8.8.8.8")
+        print(result)  # True or False
 
 asyncio.run(main())
 ```
