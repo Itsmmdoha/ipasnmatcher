@@ -5,7 +5,8 @@ from time import time
 from os import makedirs
 from .exceptions import InvalidIPError, NetworkError
 from .utils import _validate_asn, is_prefix_active
-
+from asyncio import create_task
+import warnings
 
 class ASN:
     """
@@ -253,12 +254,25 @@ class AsyncASN(ASN):
         `_network_objects` is a list of `ipaddress.IPv4Network` or
         `ipaddress.IPv6Network` instances representing the ASN's announced prefixes.
         """
+        prefix_list_response_tasks = []
         for asn in self._asn_list:
             prefix_list = self._fetch_from_file_cache(asn=asn)
-            if prefix_list is None:
-                prefix_list = await self._fetch_from_api_async(asn=asn)
-                if prefix_list:
-                    self._write_to_file_cache(asn=asn, prefix_list=prefix_list)
+            if prefix_list is not None:
+                self._load_to_network_objects(prefix_list=prefix_list)
+            else:
+                task = create_task(self._fetch_from_api_async(asn=asn))
+                prefix_list_response_tasks.append((asn,task))
+        for asn, task in prefix_list_response_tasks:
+            try:
+                prefix_list = await task
+            except NetworkError:
+                warnings.warn(
+                    f"Failed to fetch prefixes for: {asn}",
+                    category=RuntimeWarning,
+                    stacklevel=2
+                )
+                continue
+            self._write_to_file_cache(asn=asn, prefix_list=prefix_list)
             self._load_to_network_objects(prefix_list=prefix_list)
         self._last_loaded = int(time())
 
