@@ -102,7 +102,7 @@ print(combined.match("1.1.1.1"))   # True (Cloudflare)
 `repr()` shows the full combination:
 
 ```
-ASN(asn='AS15169', strict=False, cache_max_age=3600) + ASN(asn='AS13335', strict=True, cache_max_age=3600)
+ASN(asn='AS15169', strict=True, cache_max_age=3600) + ASN(asn='AS13335', strict=True, cache_max_age=3600)
 ```
 
 ## Parameters
