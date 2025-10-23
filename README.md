@@ -124,6 +124,7 @@ ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 
 
 ## Async Performance Test
+
 ```python
 import asyncio
 from ipasnmatcher import AsyncASN
@@ -137,9 +138,8 @@ t2 = perf_counter()
 print("took:",t2-t1,"to initialize")
 
 t2 = perf_counter()
-asn = asn1 + asn2 # when combined together, prefixes are fetched synchronously(blocking, non-concurrent) and loaded into memory
+asn = asn1 + asn2 # when combined together, prefixes are fetched synchronously(blocking, non-concurrent) and loaded into cache
 # Prefixes are fetched from api and loaded in cache when you either combine ASN objects or run the first .match() / async_match() method
-# Established TCP connection is kept safe for further use
 # the combined ASN object will have the lower cache_max_age, 
 # here asn1 has 1 second cache_max_age, and asn2 has 3600 seconds
 # so 1 second will be the cache_max_age of the combined asn object
@@ -154,6 +154,7 @@ async def main():
 
     t3 = perf_counter()
     match = await asn.async_match(ip)
+    # matches using previously loaded cache
     t4 = perf_counter()
 
 
@@ -163,18 +164,32 @@ async def main():
 
     sleep(1.5) # waiting 1.5 seconds to let the cache expire
 
-
     t4 = perf_counter()
     match = await asn.async_match(ip) # cache is loaded asynchronously if it's expired, using the same TCP connection 
+    # If cache is fetched by any async method (e.g via __aenter__() or .async_match() ) 
+    # Then established TCP connection is kept safe for further use
     t5 = perf_counter()
-
 
     print(match)
 
-    print("matching + reloading expired cache using previously established TCP connection:",t5-t4,"seconds") 
+    print("matching + reloading expired cache using newly established TCP connection:",t5-t4,"seconds") 
+
+    sleep(1.5) # again waiting 1.5 seconds to let the cache expire
+
+    for _ in range(3):
+        # Running it three times to benchmark how much faster re-using TCP connection can be
+        tx = perf_counter()
+        match = await asn.async_match(ip) # cache is loaded asynchronously if it's expired, using the same TCP connection 
+        # If cache is fetched by any async method (e.g via __aenter__() or .async_match() ) 
+        # then established TCP connection is kept safe for further use
+        ty = perf_counter()
+        print(match)
+
+        print("matching + reloading expired cache using previously established TCP connection:",ty-tx,"seconds") 
+        await asyncio.sleep(1.5)
 
 
-    await asn.aclose() # Closes the TCP connection
+    await asn.aclose() # Closes the TCP connection & releases async resources
     sleep(1.5) # again, waiting 1.5 seconds to let the cache expire
 
 
@@ -191,19 +206,23 @@ async def main():
 asyncio.run(main())
 ```
 
-### Results (Tested on my crappy home internet)
-
-```text
-took: 8.044199785217643e-05 to initialize                     # Object initialization (no network I/O)
-combining took: 2.221483700996032 seconds                     # Synchronous _load during __add__, fetching prefixes from RIPEstat
-cache_max_age of combined asn object is: 1                    # Combined object's cache expiry (minimum of both)
-True                                                          # IP matched within cached prefixes
-matching using loaded cache took: 7.132499013096094e-05 seconds  # Instant match using cached data
-True                                                          # IP still matched after cache reload
-matching + reloading expired cache using previously established TCP connection: 1.114092402975075 seconds  # Cache expired; prefixes reloaded over same persistent TCP connection
-True                                                          # IP matched again after reload
-matching + reloading expired cache using new TCP connection: 1.212966413993854 seconds  # Cache expired again; reloaded with a fresh TCP connection after aclose()
-s
+```bash
+```
+took: 0.0005818130000534438 to initialize
+combining took: 1.2682075939999322 seconds
+cache_max_age of combined asn object is: 1
+True
+matching using loaded cache took: 4.192099993360898e-05 seconds
+True
+matching + reloading expired cache using newly established TCP connection: 0.6581063339999673 seconds
+True
+matching + reloading expired cache using previously established TCP connection: 0.15290267000000313 seconds
+True
+matching + reloading expired cache using previously established TCP connection: 0.15268935999995392 seconds
+True
+matching + reloading expired cache using previously established TCP connection: 0.15698356899997634 seconds
+True
+matching + reloading expired cache using new TCP connection: 0.6321861889999809 seconds
 ```
 
 
