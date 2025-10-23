@@ -207,7 +207,6 @@ asyncio.run(main())
 ```
 
 ```bash
-```
 took: 0.0005818130000534438 to initialize
 combining took: 1.2682075939999322 seconds
 cache_max_age of combined asn object is: 1
