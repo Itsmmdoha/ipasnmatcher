@@ -39,12 +39,9 @@ import asyncio
 from ipasnmatcher import AsyncASN
 
 async def main():
-    # Create an async ASN object (lazy-loads on first async_match)
-    async_asn = AsyncASN("AS15169")
-
-    # The first async_match call triggers async data loading
-    result = await async_asn.async_match("8.8.8.8")
-    print(result)  # True or False
+    async with AsyncASN("AS15169") as async_asn:
+        result = await async_asn.async_match("8.8.8.8")
+        print(result)
 
 asyncio.run(main())
 ```
@@ -123,7 +120,12 @@ ASN(asn: str, strict: bool = False, cache_max_age: int = 3600)
 * Matching is done efficiently using Python’s `ipaddress` module.
 
 
-## Async Performance Test
+## Async Performance Characteristics (Illustrative Benchmark)
+
+> ⚠️ This section is **not a usage example**.
+> It is an **illustrative benchmark** to demonstrate cache reuse and TCP connection behavior.
+> The code is intentionally verbose and not meant to be copied into production.
+
 
 ```python
 import asyncio
