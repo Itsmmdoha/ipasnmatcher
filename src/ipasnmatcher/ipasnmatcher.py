@@ -151,7 +151,7 @@ class ASN:
         InvalidIPError
             If the provided IP address format is invalid.
         """
-        if self._last_loaded or time() - self._last_loaded > self._cache_max_age:
+        if self._last_loaded==-1 or time() - self._last_loaded > self._cache_max_age:
             self._load()
         prefix_node = self.rtree.search_best(ip)
         if not prefix_node:
@@ -287,7 +287,7 @@ class AsyncASN(ASN):
         InvalidIPError
             If the provided IP address format is invalid.
         """
-        if not self._last_loaded or time() - self._last_loaded > self._cache_max_age:
+        if self._last_loaded==-1 or time() - self._last_loaded > self._cache_max_age:
             await self._load_async()
         prefix_node = self.rtree.search_best(ip)
         if not prefix_node:
