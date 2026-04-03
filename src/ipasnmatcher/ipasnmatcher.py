@@ -120,7 +120,7 @@ class ASN:
 
     def _load(self) -> None:
         """
-        Load ASN prefix data (from cache or API) and build `_network_objects`.
+        Load ASN prefix data (from cache or API) into rtree.
 
         """
         for asn in self._asn_list:
