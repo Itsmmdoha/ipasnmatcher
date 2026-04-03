@@ -50,18 +50,30 @@ class ASN:
         self.rtree = radix.Radix()
 
     def __add__(self, other):
-        if type(self) is not type(other):
-            raise TypeError("Can only add ASN objects of the same class")
-        self._asn_list += other._asn_list
+        if not isinstance(other, type(self)):
+            return NotImplemented
 
+        # Create a brand new instance using the class constructor.
+        new_instance = type(self)(
+            asn=self._asn_list[0], 
+            strict=self._strict or other._strict, 
+            cache_max_age=min(self._cache_max_age, other._cache_max_age)
+        )
+
+        # Combine the internal states
+        new_instance._asn_list = self._asn_list + other._asn_list
+        new_instance._last_loaded = min(self._last_loaded, other._last_loaded)
+
+        # Populate the new Radix tree with nodes from BOTH trees
+        for node in self.rtree.nodes():
+            new_instance.rtree.add(node.prefix).data.update(node.data)
+            
         for node in other.rtree.nodes():
-            self.rtree.add(node.prefix).data.update(node.data) # add() will always return a Node provided a valid prefix
+            new_instance.rtree.add(node.prefix).data.update(node.data)
 
-        if other._strict == True: self._strict = True
-        self._cache_max_age = min(self._cache_max_age,other._cache_max_age)
-        self._last_loaded = min(self._last_loaded, other._last_loaded)
-        self._load()
-        return self
+        # Return the new object
+        return new_instance
+
     def __repr__(self) -> str:
         asn_repr = ""
         for asn in self._asn_list:
