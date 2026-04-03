@@ -1,12 +1,12 @@
 from httpx import get, AsyncClient, ConnectTimeout, ReadTimeout, RequestError
-from ipaddress import AddressValueError, ip_address, ip_network
 import json
 from time import time
 from os import makedirs
-from .exceptions import InvalidIPError, NetworkError
+from .exceptions import NetworkError
 from .utils import _validate_asn, is_prefix_active
 from asyncio import create_task
 import warnings
+import radix
 
 class ASN:
     """
@@ -44,21 +44,36 @@ class ASN:
         self._strict = strict
         self._cache_max_age = cache_max_age
         self._SOURCE_APP: str = "Ipasnmatcher"
-        self._network_objects = []
         makedirs(".ipasnmatcher_cache", exist_ok=True)
-        self._last_loaded = int(time())
+        self._last_loaded = -1
         self.asn_repr = f"ASN(asn={self._asn_list!r}, strict={self._strict!r}, cache_max_age={self._cache_max_age!r} )"
+        self.rtree = radix.Radix()
 
     def __add__(self, other):
-        if type(self) is not type(other):
-            raise TypeError("Can only add ASN objects of the same class")
-        self._asn_list += other._asn_list
-        self._network_objects += other._network_objects
-        if other._strict == True: self._strict = True
-        self._cache_max_age = min(self._cache_max_age,other._cache_max_age)
-        self._last_loaded = min(self._last_loaded, other._last_loaded)
-        self._load()
-        return self
+        if not isinstance(other, type(self)):
+            return NotImplemented
+
+        # Create a brand new instance using the class constructor.
+        new_instance = type(self)(
+            asn=self._asn_list[0], 
+            strict=self._strict or other._strict, 
+            cache_max_age=min(self._cache_max_age, other._cache_max_age)
+        )
+
+        # Combine the internal states
+        new_instance._asn_list = self._asn_list + other._asn_list
+        new_instance._last_loaded = min(self._last_loaded, other._last_loaded)
+
+        # Populate the new Radix tree with nodes from BOTH trees
+        for node in self.rtree.nodes():
+            new_instance.rtree.add(node.prefix).data.update(node.data)
+            
+        for node in other.rtree.nodes():
+            new_instance.rtree.add(node.prefix).data.update(node.data)
+
+        # Return the new object
+        return new_instance
+
     def __repr__(self) -> str:
         asn_repr = ""
         for asn in self._asn_list:
@@ -102,24 +117,22 @@ class ASN:
         except (KeyError, json.JSONDecodeError):
             return None
 
-    def _load_to_network_objects(self, prefix_list):
+    def _load_prefix_to_rtree(self, prefix_list):
         """
-        Core logic to process prefix_list into _network_objects.
-            `_network_objects` is a list of `ipaddress.IPv4Network` or
-            `ipaddress.IPv6Network` instances representing the ASN's announced prefixes.
+        Core logic to add to radix tree.
+            `rtree.add()` returns RadixNode object, this node has a .data attribute of directory type.
 
         """
-        network_objects = []
-        for prefix in prefix_list:
-            timelines = prefix["timelines"]
+        for prefix_obj in prefix_list:
+            timelines = prefix_obj["timelines"]
             if self._strict and not is_prefix_active(timelines):
                 continue
-            network_objects.append(ip_network(prefix["prefix"], strict=False))
-        self._network_objects += network_objects 
+            self.rtree.add(prefix_obj["prefix"]).data.update(prefix_obj)
+
 
     def _load(self) -> None:
         """
-        Load ASN prefix data (from cache or API) and build `_network_objects`.
+        Load ASN prefix data (from cache or API) into rtree.
 
         """
         for asn in self._asn_list:
@@ -128,17 +141,8 @@ class ASN:
                 prefix_list = self._fetch_from_api(asn=asn)
                 if prefix_list:
                     self._write_to_file_cache(asn=asn, prefix_list=prefix_list)
-            self._load_to_network_objects(prefix_list=prefix_list)
+            self._load_prefix_to_rtree(prefix_list=prefix_list)
         self._last_loaded = int(time())
-
-    def is_ip_in_prefix_list(self, ip: str) -> bool:
-        """Core logic to check if an IP has a match in the prefix list."""
-        try:
-            address = ip_address(ip)
-        except (AddressValueError, ValueError):
-            raise InvalidIPError(f"Invalid IP address: {ip}")
-        flag = any(address in net for net in self._network_objects)
-        return flag
 
     def match(self, ip: str) -> bool:
         """
@@ -156,12 +160,15 @@ class ASN:
 
         Raises
         ------
-        InvalidIPError
+        ValueError
             If the provided IP address format is invalid.
         """
-        if not self._network_objects or time() - self._last_loaded > self._cache_max_age:
+        if self._last_loaded==-1 or time() - self._last_loaded > self._cache_max_age:
             self._load()
-        return self.is_ip_in_prefix_list(ip=ip)
+        prefix_node = self.rtree.search_best(ip)
+        if not prefix_node:
+            return False
+        return True
 
 
 
@@ -249,16 +256,13 @@ class AsyncASN(ASN):
 
     async def _load_async(self):
         """
-        Load ASN prefix data Asynchronously (from cache or API) and build `_network_objects`.
-
-        `_network_objects` is a list of `ipaddress.IPv4Network` or
-        `ipaddress.IPv6Network` instances representing the ASN's announced prefixes.
+        Load ASN prefix data Asynchronously (from cache or API) into radix tree.
         """
         prefix_list_response_tasks = []
         for asn in self._asn_list:
             prefix_list = self._fetch_from_file_cache(asn=asn)
             if prefix_list is not None:
-                self._load_to_network_objects(prefix_list=prefix_list)
+                self._load_prefix_to_rtree(prefix_list=prefix_list)
             else:
                 task = create_task(self._fetch_from_api_async(asn=asn))
                 prefix_list_response_tasks.append((asn,task))
@@ -273,12 +277,12 @@ class AsyncASN(ASN):
                 )
                 continue
             self._write_to_file_cache(asn=asn, prefix_list=prefix_list)
-            self._load_to_network_objects(prefix_list=prefix_list)
+            self._load_prefix_to_rtree(prefix_list=prefix_list)
         self._last_loaded = int(time())
 
     async def async_match(self, ip: str) -> bool:
         """
-        Asynchronously check if an IP belongs to the ASN's announced prefixes.
+        Check if an IP belongs to the ASN's announced prefixes.
 
         Parameters
         ----------
@@ -292,10 +296,13 @@ class AsyncASN(ASN):
 
         Raises
         ------
-        InvalidIPError
+        ValueError
             If the provided IP address format is invalid.
         """
-        if not self._network_objects or time() - self._last_loaded > self._cache_max_age:
+        if self._last_loaded==-1 or time() - self._last_loaded > self._cache_max_age:
             await self._load_async()
-        return self.is_ip_in_prefix_list(ip=ip)
+        prefix_node = self.rtree.search_best(ip)
+        if not prefix_node:
+            return False
+        return True
 
