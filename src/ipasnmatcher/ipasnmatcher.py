@@ -2,7 +2,7 @@ from httpx import get, AsyncClient, ConnectTimeout, ReadTimeout, RequestError
 import json
 from time import time
 from os import makedirs
-from .exceptions import InvalidIPError, NetworkError
+from .exceptions import NetworkError
 from .utils import _validate_asn, is_prefix_active
 from asyncio import create_task
 import warnings
@@ -148,7 +148,7 @@ class ASN:
 
         Raises
         ------
-        InvalidIPError
+        ValueError
             If the provided IP address format is invalid.
         """
         if self._last_loaded==-1 or time() - self._last_loaded > self._cache_max_age:
@@ -284,7 +284,7 @@ class AsyncASN(ASN):
 
         Raises
         ------
-        InvalidIPError
+        ValueError
             If the provided IP address format is invalid.
         """
         if self._last_loaded==-1 or time() - self._last_loaded > self._cache_max_age:
